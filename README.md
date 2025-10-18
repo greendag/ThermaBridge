@@ -37,7 +37,7 @@ and tools to build/upload the project using PlatformIO.
 - The onboard RGB NeoPixel (data pin `GPIO48` on the tested S3 board) is used when
 	present. When not present, the firmware falls back to PWM on the LED pin or plain
 	digital toggling.
-- Alive blink is dim (controlled by `LED_ON_BRIGHTNESS`) and slower than before.
+- Alive blink is dim (controlled by `LED_ON_BRIGHTNESS`) and set to a relaxed cadence.
 - Colors:
 	- AP/provisioning mode: amber (low brightness)
 	- STA/connected mode: green (low brightness)
