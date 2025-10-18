@@ -22,7 +22,7 @@ const uint8_t LED_ON_BRIGHTNESS = 3; // 0-255 (set lower for dimmer)
 static Adafruit_NeoPixel *neoPixel = nullptr;
 static bool g_neopixelAvailable = false;
 
-// Blink interval (slowed by ~50%)
+// Blink interval in milliseconds (current value: 750)
 const unsigned long BLINK_INTERVAL_MS = 750;
 
 // Runtime flag to indicate whether PWM was successfully attached to the LED pin
@@ -107,7 +107,7 @@ void factoryReset()
 // Check for long-press on BOOT button (active low). Returns true if reset performed.
 bool checkFactoryReset()
 {
-    // Read configured timeout (seconds). If not loaded yet, use 30s default
+    // Read configured timeout (seconds). Default is 10 seconds when not set.
     uint16_t holdSecs = (cfg.reset_hold_seconds > 0) ? cfg.reset_hold_seconds : 10;
     if (digitalRead(BOOT_PIN) == LOW)
     {
