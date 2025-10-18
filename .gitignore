@@ -44,3 +44,6 @@ __pycache__/
 
 # Node
 node_modules/
+
+# Temporary status capture files created by local checks
+git_status*.txt
