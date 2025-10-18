@@ -1,0 +1,171 @@
+#include <Arduino.h>
+#include <WiFi.h>
+#include <LittleFS.h>
+#include <Preferences.h>
+
+#include "config.h"
+#include "provisioning.h"
+
+// Pins
+const uint8_t LED_PIN = LED_BUILTIN; // onboard LED (usually GPIO2)
+const uint8_t BOOT_PIN = 0;          // BOOT button (GPIO0) active-low
+
+// Blink interval
+const unsigned long BLINK_INTERVAL_MS = 500;
+
+// State
+Config cfg;
+Preferences prefs;
+
+// Factory reset action: clear stored config and preferences
+void factoryReset()
+{
+    Serial.println("Factory reset: clearing stored configuration...");
+    // Clear preferences namespace
+    prefs.begin("thermabridge", false);
+    prefs.clear();
+    prefs.end();
+    // Erase config.json from LittleFS
+    eraseConfig();
+    // Visual feedback
+    for (int i = 0; i < 6; ++i)
+    {
+        digitalWrite(LED_PIN, HIGH);
+        delay(150);
+        digitalWrite(LED_PIN, LOW);
+        delay(150);
+    }
+    Serial.println("Factory reset complete, rebooting...");
+    delay(200);
+    ESP.restart();
+}
+
+// Check for long-press on BOOT button (active low). Returns true if reset performed.
+bool checkFactoryReset()
+{
+    // Read configured timeout (seconds). If not loaded yet, use 30s default
+    uint16_t holdSecs = (cfg.reset_hold_seconds > 0) ? cfg.reset_hold_seconds : 30;
+    if (digitalRead(BOOT_PIN) == LOW)
+    {
+        unsigned long start = millis();
+        // wait while button held, but allow other background processing every 200ms
+        while (digitalRead(BOOT_PIN) == LOW)
+        {
+            if (millis() - start >= (unsigned long)holdSecs * 1000UL)
+            {
+                factoryReset();
+                return true;
+            }
+            delay(200);
+        }
+    }
+    return false;
+}
+
+void startBlink()
+{
+    pinMode(LED_PIN, OUTPUT);
+}
+
+void setup()
+{
+    Serial.begin(115200);
+    delay(20);
+
+    pinMode(BOOT_PIN, INPUT_PULLUP); // BOOT button is active-low
+    startBlink();
+
+    // Initialize LittleFS early so modules can use it
+    bool lfsMounted = LittleFS.begin();
+    if (!lfsMounted)
+    {
+        Serial.println("Warning: LittleFS failed to mount");
+        // Try a safe one-time format to recover a corrupted filesystem
+        Serial.println("Attempting LittleFS format to recover corrupted filesystem...");
+        if (LittleFS.format())
+        {
+            Serial.println("LittleFS formatted, retrying mount...");
+            lfsMounted = LittleFS.begin();
+            if (lfsMounted)
+            {
+                Serial.println("LittleFS mount succeeded after format");
+            }
+            else
+            {
+                Serial.println("LittleFS still failed to mount after format");
+            }
+        }
+        else
+        {
+            Serial.println("LittleFS format failed");
+        }
+    }
+
+    // Load configuration from LittleFS (config.json)
+    if (!loadConfig(cfg))
+    {
+        Serial.println("No config found, entering provisioning mode...");
+        // start AP + captive portal to collect WiFi
+        startProvisioning();
+        return;
+    }
+
+    Serial.println("Loaded config; attempting to connect to WiFi...");
+    Serial.print("SSID: ");
+    Serial.println(cfg.ssid);
+
+    // Try connecting with the stored credentials
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(cfg.ssid.c_str(), cfg.psk.c_str());
+
+    unsigned long start = millis();
+    const unsigned long CONNECT_TIMEOUT = 15000; // 15s
+    while (millis() - start < CONNECT_TIMEOUT)
+    {
+        if (WiFi.status() == WL_CONNECTED)
+            break;
+        // Allow checking factory reset while waiting
+        if (checkFactoryReset())
+            return; // factoryReset will restart
+        delay(200);
+    }
+
+    if (WiFi.status() == WL_CONNECTED)
+    {
+        Serial.print("Connected as STA, IP: ");
+        Serial.println(WiFi.localIP());
+        // Start a small status server on the LAN so /status is reachable
+        startStatusServer();
+        // normal operation continues in loop (blink)
+    }
+    else
+    {
+        Serial.println("Failed to connect, starting provisioning AP...");
+        startProvisioning();
+    }
+}
+
+void loop()
+{
+    // If provisioning active, let it handle DNS + web server
+    if (isProvisioningActive())
+    {
+        loopProvisioning();
+    }
+
+    // Check for long-press factory reset
+    checkFactoryReset();
+
+    // Service the STA-mode status server (if active)
+    loopStatusServer();
+
+    // Blink LED as alive indicator
+    static unsigned long last = 0;
+    if (millis() - last >= BLINK_INTERVAL_MS)
+    {
+        last = millis();
+        static bool on = false;
+        on = !on;
+        digitalWrite(LED_PIN, on ? HIGH : LOW);
+    }
+}
