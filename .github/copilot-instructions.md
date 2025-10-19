@@ -69,6 +69,19 @@ Development guidelines (for humans and AI agents):
 - Document public API and data: provide header comments for every class, struct, public field/property and function — including expected inputs, outputs, side-effects, and error modes.
 - Comment complex logic: add concise inline comments that explain *why* code does something non-obvious (not just *what*). Use short examples or references to related files when helpful.
 
+- Release/versioning: when preparing a release, increment the `minor` number in `data/config.json`'s `fw_version` (e.g. from `v1.2` to `v1.3`) — the build script will append the build count to produce `v1.3.<BUILD>`.
+
+Note about the build bump hook:
+
+- The project runs the build bump only when performing an upload. The PlatformIO hook `scripts/bump_on_upload.py` detects the `upload` target and executes `scripts/bump_build.py`. A normal build (`platformio run`) will not run the bump script.
+- To run the bump locally without uploading, execute:
+
+```powershell
+python scripts/bump_build.py
+```
+
+This keeps `data/config.json` stable in the repo; generated output appears in `data/build_info.json` and `src/build_info.h`.
+
 Examples from this repo:
 
 - Place config loading/saving logic in `src/config.cpp` and document `CONFIG_PATH` and the whitespace-SSID semantics.
