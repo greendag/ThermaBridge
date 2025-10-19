@@ -4,6 +4,8 @@ ThermaBridge is a small firmware project for ESP32-based development boards that
 provides an easy captive-portal provisioning UX, persistent device configuration
 (using LittleFS), and a simple HTTP status API for diagnostics.
 
+Note: developer & AI-agent guidance lives in `.github/copilot-instructions.md` — please update it when changing behavior or developer workflows.
+
 This repository contains the firmware, the web UI files (served from LittleFS),
 and tools to build/upload the project using PlatformIO.
 
