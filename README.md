@@ -70,6 +70,25 @@ python -m platformio device monitor -p COM9 -b 115200
 
 Adjust `COM9` and the board/env in `platformio.ini` as needed.
 
+## Network discovery (mDNS)
+
+When the device is connected to your LAN it advertises an mDNS name (e.g. `ThermaBridge.local`). You can access the status endpoint directly:
+
+```text
+http://<devname>.local/status
+```
+
+On macOS use `dns-sd` and on Linux use `avahi-browse` to discover services; Windows may require Bonjour for `.local` resolution.
+
+## Build info and badge
+
+The current firmware version is embedded in the firmware as `FW_VERSION` and is generated at build time into `src/build_info.h`.
+
+- Human-visible version: `data/build_info.json` -> `fw_version` (generated on each build by the build script).
+- Numeric build number: `.build_count` in the repository root (local counter incremented on each build).
+
+If you run the build locally the script `scripts/bump_build.py` will generate `data/build_info.json` and `src/build_info.h` automatically before compilation.
+
 ## Development notes
 - Edit the web UI files in `data/` and re-run `uploadfs` to update LittleFS contents.
 - Config is parsed with ArduinoJson v7; `src/config.*` contains helpers `loadConfig()` and `saveConfig()`.
