@@ -87,7 +87,22 @@ The current firmware version is embedded in the firmware as `FW_VERSION` and is 
 - Human-visible version: `data/build_info.json` -> `fw_version` (generated on each build by the build script).
 - Numeric build number: `.build_count` in the repository root (local counter incremented on each build).
 
-If you run the build locally the script `scripts/bump_build.py` will generate `data/build_info.json` and `src/build_info.h` automatically before compilation.
+The bump script runs only on upload (or can be run manually):
+
+- `scripts/bump_build.py` is executed by PlatformIO only when the upload target runs (it is invoked via `scripts/bump_on_upload.py`), so running a normal build (`python -m platformio run`) will not increment the build number.
+- To generate the build files locally, run the script directly:
+
+```powershell
+python scripts/bump_build.py
+```
+
+- Or run the upload target (which invokes the script automatically):
+
+```powershell
+python -m platformio run -t upload
+```
+
+The script writes `src/build_info.h` and `data/build_info.json` (both generated). A placeholder `src/build_info.h` is committed so normal builds still work even if the script has not run.
 
 ## Development notes
 - Edit the web UI files in `data/` and re-run `uploadfs` to update LittleFS contents.
