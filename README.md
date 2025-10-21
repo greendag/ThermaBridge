@@ -102,6 +102,36 @@ Inspect the current generated info quickly with:
 python scripts/print_build_info.py
 ```
 
+## Status JSON schema
+
+The device exposes a simple JSON payload at `GET /status`. Callers can expect the
+following fields in the response (types shown in parentheses):
+
+- `configured` (boolean) — whether a valid config is loaded
+- `ssid` (string) — configured SSID (empty string if not configured)
+- `psk_masked` (string) — PSK with characters replaced by `*` (empty if not configured)
+- `devname` (string) — configured device name (empty if not configured)
+- `wifi_status` (number) — numeric WiFi status (from `WiFi.status()`)
+- `ip` (string) — device IP address when connected, or empty string when not connected
+- `firmware_version` (string) — full firmware version embedded at build time (value of `FW_VERSION` from `src/build_info.h`)
+
+Example (pretty-printed):
+
+```
+{
+	"configured": true,
+	"ssid": "MyNetwork",
+	"psk_masked": "********",
+	"devname": "ThermaBridge",
+	"wifi_status": 3,
+	"ip": "192.168.1.42",
+	"firmware_version": "v1.0.19"
+}
+```
+
+Note: the `firmware_version` field is populated from the compile-time header `src/build_info.h`; it is the single source-of-truth for firmware versioning in this repo.
+
+
 ## Development notes
 - Edit the web UI files in `data/` and re-run `uploadfs` to update LittleFS contents.
 - Config is parsed with ArduinoJson v7; `src/config.*` contains helpers `loadConfig()` and `saveConfig()`.
