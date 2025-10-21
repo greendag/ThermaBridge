@@ -47,3 +47,7 @@ node_modules/
 
 # Temporary status capture files created by local checks
 git_status*.txt
+
+# Local build bump artifacts (local-only)
+.build_count
+.bump.log

@@ -1,5 +1,6 @@
 #include "provisioning.h"
 #include "config.h"
+#include "build_info.h"
 #include <WiFi.h>
 #include <WebServer.h>
 #include <DNSServer.h>
@@ -161,6 +162,14 @@ void handleStatus()
     }
     json += "}";
 
+    // Append firmware version info to the status response under key "firmware_version"
+    // Insert before final closing brace by rebuilding the tail of the JSON.
+    if (json.length() > 0 && json.charAt(json.length() - 1) == '}')
+    {
+        json = json.substring(0, json.length() - 1);
+        json += ",\"firmware_version\":\"" + String(FW_VERSION) + "\"}";
+    }
+
     server.send(200, "application/json", json);
 }
 
@@ -260,6 +269,11 @@ void startStatusServer()
             json += "\"ip\":\"\"";
         }
         json += "}";
+        // add firmware_version to STA-mode response similarly
+        if (json.length() > 0 && json.charAt(json.length() - 1) == '}') {
+            json = json.substring(0, json.length() - 1);
+            json += ",\"firmware_version\":\"" + String(FW_VERSION) + "\"}";
+        }
         statusServer.send(200, "application/json", json); });
     // Expose the config file from STA-mode status server as well
     statusServer.on("/config", HTTP_GET, []()

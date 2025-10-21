@@ -1,3 +1,70 @@
+This repository is a small ESP32-S3 firmware (PlatformIO + Arduino) for a headless device that either
+- starts a provisioning AP + captive UI served from LittleFS, or
+- connects as STA and exposes a minimal status HTTP server.
+
+Keep instructions compact, prescriptive, and tied to concrete files and patterns below.
+
+Quick orientation (read these first)
+- `src/main.cpp` — boot flow, decides between provisioning and STA modes.
+- `src/provisioning.cpp` — AP/captive portal, DNSServer usage, serves `data/` on LittleFS, handles `/save` to write `/config.json`.
+- `src/config.cpp`/`src/config.h` — config load/save and `CONFIG_PATH` constant (always `/config.json`).
+- `src/system.cpp` — factory reset logic and Preferences namespace handling.
+- `src/led.cpp` — LED alive indicator (NeoPixel preferred, PWM fallback).
+
+Big-picture architecture
+- Modes: provisioning (AP + captive portal) vs. normal STA mode.
+- Persistent storage: LittleFS holds the web UI and `/config.json` (CONFIG_PATH). Code often mounts LittleFS locally; don't assume global mount.
+- Preferences: `Preferences` namespace is `"thermabridge"` and is cleared on factory reset (see `system.cpp`).
+- Networking: provisioning uses `DNSServer` to capture DNS and serve the captive portal; STA mode starts a minimal `WebServer` exposing `/status`, `/health`, and `/config`.
+
+Key developer workflows
+- Build firmware (local):
+  - python -m platformio run
+- Upload LittleFS `data/` files to the device (required after editing `data/`):
+  - python -m platformio run -t uploadfs
+- Upload firmware to board (runs the build hook that may bump build number on upload):
+  - python -m platformio run -t upload
+- Serial monitor (default in platformio.ini is COM9 @ 115200):
+  - python -m platformio device monitor -p COM9 -b 115200
+
+Project-specific conventions and gotchas (do not change silently)
+- Config path and semantics: `CONFIG_PATH` is `/config.json`. An empty or whitespace-only `ssid` in that file is treated as "no config" and causes provisioning to start.
+- LittleFS mounting: Many modules call `LittleFS.begin()` locally. Either preserve this behavior or consolidate carefully and ensure callers still work.
+- Wi‑Fi timeouts: Connection attempts are blocking with a 15s timeout in `src/main.cpp` and `src/provisioning.cpp`. Preserve UX semantics when refactoring.
+- Preferences namespace: Use the namespace `thermabridge` (see `system.cpp`). Factory reset clears this namespace and erases `/config.json`.
+- PSK handling: Mask PSKs before logging or returning them (provisioning masks PSK characters with `*` when returning `/status`).
+- BOOT button: GPIO0 is active-low and used for long-press factory reset. Duration is configurable by `reset_hold_seconds` in `data/config.json` or `/config.json` on LittleFS.
+
+Integration points & dependencies
+- Libraries referenced in `platformio.ini`: `ArduinoJson`, `Adafruit NeoPixel`, `LittleFS`, `WebServer`, `DNSServer`, `Preferences`.
+- Captive portal: `DNSServer` redirects all DNS queries to the AP IP while provisioning is active.
+ - LittleFS `data/` files (UI): `data/index.html`, `data/app.js`, `data/style.css`, `data/config.json`.
+
+Files that show important patterns (use as references when making edits)
+- `src/provisioning.cpp` — demonstrates captive portal routing and PSK masking.
+- `src/config.cpp` — shows config load/save semantics and whitespace SSID logic.
+- `src/system.cpp` — factory reset flow and Preferences clearing.
+- `src/led.cpp` — shows NeoPixel+PWM fallback and alive cadence toggling.
+
+Testing and validation guidance for code changes
+- After editing `data/` files, always run `uploadfs` so LittleFS matches the build artifacts.
+- Verify build success locally before PR: `python -m platformio run` (the upload hook increments builds only when running upload target).
+- Optional hardware check: open the serial monitor and confirm boot messages, provisioning AP (if no config), or STA endpoints `/status` and `/health` when connected.
+
+Small, low-risk PR additions that are welcome
+- Add small unit-style tests or CI steps that run `platformio run` to catch compile errors. (This repo currently has no test suite.)
+- Improve inline comments documenting why specific timeouts and mounts are chosen (not just what they do).
+
+When changing behavior, document in `README.md` and the PR description
+- Any modification that affects LittleFS mounting, Wi‑Fi timeouts, or reset handling must be clearly described in the PR and validated on hardware where practical.
+
+If something is unclear
+- Ask for the intended device behavior (e.g., change to non-blocking Wi‑Fi connect) and whether the LittleFS mount semantics may be altered. Provide suggested small changes rather than large refactors.
+
+Contact points
+- For firmware behavior questions, inspect `src/main.cpp` and `src/provisioning.cpp` first.
+
+-- end --
 ## Quick orientation
 
 This is a small ESP32-S3 firmware (PlatformIO + Arduino). Its scope and runtime are intentionally tiny:
@@ -69,18 +136,18 @@ Development guidelines (for humans and AI agents):
 - Document public API and data: provide header comments for every class, struct, public field/property and function — including expected inputs, outputs, side-effects, and error modes.
 - Comment complex logic: add concise inline comments that explain *why* code does something non-obvious (not just *what*). Use short examples or references to related files when helpful.
 
-- Release/versioning: when preparing a release, increment the `minor` number in `data/config.json`'s `fw_version` (e.g. from `v1.2` to `v1.3`) — the build script will append the build count to produce `v1.3.<BUILD>`.
+- Release/versioning: when preparing a release, increment the `minor` number used by the bump script (typically set via `FW_BASE_VERSION` in `src/build_info.h` or configured by the bump script). The build script will append the build count to produce `vMAJOR.MINOR.<BUILD>`.
 
 Note about the build bump hook:
 
-- The project runs the build bump only when performing an upload. The PlatformIO hook `scripts/bump_on_upload.py` detects the `upload` target and executes `scripts/bump_build.py`. A normal build (`platformio run`) will not run the bump script.
+- The project runs the build bump via the post-build script `scripts/bump_on_build.py`. This hook runs after builds (including the build step run as part of upload), so the bump will occur for both normal builds and uploads.
 - To run the bump locally without uploading, execute:
 
 ```powershell
 python scripts/bump_build.py
 ```
 
-This keeps `data/config.json` stable in the repo; generated output appears in `data/build_info.json` and `src/build_info.h`.
+This keeps `data/config.json` stable in the repo; generated output appears in `src/build_info.h`.
 
 Examples from this repo:
 

@@ -82,27 +82,25 @@ On macOS use `dns-sd` and on Linux use `avahi-browse` to discover services; Wind
 
 ## Build info and badge
 
-The current firmware version is embedded in the firmware as `FW_VERSION` and is generated at build time into `src/build_info.h`.
+The canonical firmware version is embedded in the firmware header `src/build_info.h` as
+`FW_VERSION` and `FW_BUILD_NUMBER`. Build/upload scripts will update `src/build_info.h` at
+upload time. `data/config.json` no longer contains `fw_version`, `fw_base`, or `build`.
 
-- Human-visible version: `data/build_info.json` -> `fw_version` (generated on each build by the build script).
-- Numeric build number: `.build_count` in the repository root (local counter incremented on each build).
-
-The bump script runs only on upload (or can be run manually):
-
-- `scripts/bump_build.py` is executed by PlatformIO only when the upload target runs (it is invoked via `scripts/bump_on_upload.py`), so running a normal build (`python -m platformio run`) will not increment the build number.
-- To generate the build files locally, run the script directly:
+Local bump-on-build
+- The project still increments a local build counter stored in `.build_count` when the bump
+	script runs (typically during upload). The header `src/build_info.h` is the single source of
+	truth for the firmware version embedded in builds.
+- Generate or update the build info locally with:
 
 ```powershell
 python scripts/bump_build.py
 ```
 
-- Or run the upload target (which invokes the script automatically):
+Inspect the current generated info quickly with:
 
 ```powershell
-python -m platformio run -t upload
+python scripts/print_build_info.py
 ```
-
-The script writes `src/build_info.h` and `data/build_info.json` (both generated). A placeholder `src/build_info.h` is committed so normal builds still work even if the script has not run.
 
 ## Development notes
 - Edit the web UI files in `data/` and re-run `uploadfs` to update LittleFS contents.

@@ -1,8 +1,8 @@
 """Pre-build script for PlatformIO: bump a build counter and generate src/build_info.h
 
-This script reads `data/config.json` `fw_version` as a base (expects `vMAJOR.MINOR` or
-`vMAJOR.MINOR.PATCH`), increments a local `.build_count` file, and writes `src/build_info.h`
-with FW_VERSION set to `vMAJOR.MINOR.BUILD`.
+This script derives the base MAJOR.MINOR from `src/build_info.h` (if present) and increments
+the local `.build_count` file to produce `FW_VERSION = vMAJOR.MINOR.BUILD` in
+`src/build_info.h`.
 
 It is safe to run repeatedly; `.build_count` is stored in the project root (not committed by
 default) so builds increment the build number without modifying tracked source files.
@@ -12,18 +12,32 @@ import json
 import re
 
 project_dir = os.getcwd()
-data_config = os.path.join(project_dir, 'data', 'config.json')
 build_count_file = os.path.join(project_dir, '.build_count')
 build_info_h = os.path.join(project_dir, 'src', 'build_info.h')
 
-def read_fw_base():
-    try:
-        with open(data_config, 'r', encoding='utf-8') as f:
-            doc = json.load(f)
-            fw = doc.get('fw_version', '')
-            return fw
-    except Exception:
+
+def read_fw_base_from_header():
+    # Try to read FW_BASE_VERSION from existing header to preserve MAJOR.MINOR
+    if not os.path.exists(build_info_h):
         return ''
+    try:
+        with open(build_info_h, 'r', encoding='utf-8') as f:
+            for line in f:
+                if 'FW_BASE_VERSION' in line:
+                    m = re.search(r'"(v\d+\.\d+)"', line)
+                    if m:
+                        return m.group(1)
+    except Exception:
+        pass
+    return ''
+
+def read_fw_base():
+    # Prefer the header FW_BASE_VERSION if present
+    hdr = read_fw_base_from_header()
+    if hdr:
+        return hdr
+    # No fallback: header is the canonical source of base version
+    return ''
 
 def parse_base(fw):
     # match vMAJOR.MINOR(.PATCH)?
@@ -58,19 +72,8 @@ def write_build_info(major, minor, build):
     with open(build_info_h, 'w', encoding='utf-8') as f:
         f.write(content)
     print(f'Generated {build_info_h} with FW_VERSION={version}')
-    # Write a generated data/build_info.json so builds don't modify tracked files
-    try:
-        build_info_path = os.path.join(project_dir, 'data', 'build_info.json')
-        build_doc = {
-            'fw_version': version,
-            'fw_base': f'v{major}.{minor}',
-            'build': build
-        }
-        with open(build_info_path, 'w', encoding='utf-8') as f:
-            json.dump(build_doc, f, indent=4)
-        print(f'Wrote {build_info_path}')
-    except Exception as e:
-        print(f'Warning: failed to write data/build_info.json: {e}')
+    # Intentionally do NOT write version info into data/config.json anymore.
+    # The canonical version information now lives in src/build_info.h.
 
 def main():
     fw = read_fw_base()
