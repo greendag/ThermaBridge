@@ -13,6 +13,12 @@
         <label>Wi-Fi SSID<input id="ssid" name="ssid" required></label>
         <label>Wi-Fi Password<input id="psk" name="psk" type="password"></label>
         <label>Device Name<input id="devname" name="devname"></label>
+        <label>OTA Password<input id="ota_password" name="ota_password" type="password"></label>
+        <label>Reset Hold Seconds<input id="reset_hold_seconds" name="reset_hold_seconds" type="number" min="1"
+                max="300" value="10"></label>
+        <div id="resetInfo">Current effective reset hold seconds: <span id="resetDisplay">10</span>s</div>
+        <p class="hint">Hold the BOOT button for this many seconds to trigger a factory reset (default 10s). Valid
+            range: 1-300s.</p>
         <button type="submit">Save & Connect</button>
     </form>
     <div id="status"></div>

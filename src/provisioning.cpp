@@ -1,10 +1,12 @@
 #include "provisioning.h"
 #include "config.h"
+#include "build_info.h"
 #include <WiFi.h>
 #include <WebServer.h>
 #include <DNSServer.h>
 #include <LittleFS.h>
 #include <Preferences.h>
+// Note: HTTP firmware upload endpoint removed (use ArduinoOTA instead)
 
 static WebServer server(80);
 static DNSServer dnsServer;
@@ -42,6 +44,22 @@ void handleSave()
     cfg.ssid = server.arg("ssid");
     cfg.psk = server.arg("psk");
     cfg.devname = server.arg("devname");
+    // SECURITY CONSIDERATION: The OTA password is stored in plain text in the configuration file.
+    // Anyone with filesystem access can read this password. See README for details.
+    cfg.ota_password = server.arg("ota_password");
+    // Parse optional reset_hold_seconds (numeric). Default to 10 if missing or invalid.
+    String rhs = server.arg("reset_hold_seconds");
+    if (rhs.length() > 0)
+    {
+        int v = rhs.toInt();
+        if (v <= 0)
+            v = 10;
+        cfg.reset_hold_seconds = (uint16_t)v;
+    }
+    else
+    {
+        cfg.reset_hold_seconds = 10;
+    }
     if (cfg.ssid.length() == 0)
     {
         server.send(400, "text/plain", "SSID required");
@@ -138,9 +156,17 @@ void handleStatus()
             for (size_t i = 0; i < pskMasked.length(); ++i)
                 pskMasked.setCharAt(i, '*');
         }
+        // mask OTA password
+        String otaMasked = current.ota_password;
+        if (otaMasked.length() > 0)
+        {
+            for (size_t i = 0; i < otaMasked.length(); ++i)
+                otaMasked.setCharAt(i, '*');
+        }
         json += "\"ssid\":\"" + current.ssid + "\",";
         json += "\"psk_masked\":\"" + pskMasked + "\",";
         json += "\"devname\":\"" + current.devname + "\",";
+        json += "\"ota_password_masked\":\"" + otaMasked + "\",";
     }
     else
     {
@@ -160,6 +186,14 @@ void handleStatus()
         json += "\"ip\":\"\"";
     }
     json += "}";
+
+    // Append firmware version info to the status response under key "firmware_version"
+    // Insert before final closing brace by rebuilding the tail of the JSON.
+    if (json.length() > 0 && json.charAt(json.length() - 1) == '}')
+    {
+        json = json.substring(0, json.length() - 1);
+        json += ",\"firmware_version\":\"" + String(FW_VERSION) + "\"}";
+    }
 
     server.send(200, "application/json", json);
 }
@@ -244,9 +278,14 @@ void startStatusServer()
             if (pskMasked.length() > 0) {
                 for (size_t i = 0; i < pskMasked.length(); ++i) pskMasked.setCharAt(i, '*');
             }
+            String otaMasked = current.ota_password;
+            if (otaMasked.length() > 0) {
+                for (size_t i = 0; i < otaMasked.length(); ++i) otaMasked.setCharAt(i, '*');
+            }
             json += "\"ssid\":\"" + current.ssid + "\",";
             json += "\"psk_masked\":\"" + pskMasked + "\",";
             json += "\"devname\":\"" + current.devname + "\",";
+            json += "\"ota_password_masked\":\"" + otaMasked + "\",";
         } else {
             json += "\"ssid\":\"\",";
             json += "\"psk_masked\":\"\",";
@@ -260,6 +299,11 @@ void startStatusServer()
             json += "\"ip\":\"\"";
         }
         json += "}";
+        // add firmware_version to STA-mode response similarly
+        if (json.length() > 0 && json.charAt(json.length() - 1) == '}') {
+            json = json.substring(0, json.length() - 1);
+            json += ",\"firmware_version\":\"" + String(FW_VERSION) + "\"}";
+        }
         statusServer.send(200, "application/json", json); });
     // Expose the config file from STA-mode status server as well
     statusServer.on("/config", HTTP_GET, []()
@@ -286,7 +330,17 @@ void startStatusServer()
         Serial.println(statusServer.client().remoteIP().toString());
         statusServer.send(200, "application/json", json); });
     statusServer.begin();
+    // Mark the STA-mode status server as active so loopStatusServer() polls it
     statusServerActive = true;
+    // Log any unmatched requests on the STA server for diagnostics
+    statusServer.onNotFound([]()
+                            {
+        IPAddress remote = statusServer.client().remoteIP();
+        Serial.print("STA notFound request from: ");
+        Serial.println(remote.toString());
+        Serial.print("URI: ");
+        Serial.println(statusServer.uri());
+        statusServer.send(404, "text/plain", "Not found"); });
 }
 
 void loopStatusServer()
