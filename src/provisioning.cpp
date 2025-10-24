@@ -44,6 +44,8 @@ void handleSave()
     cfg.ssid = server.arg("ssid");
     cfg.psk = server.arg("psk");
     cfg.devname = server.arg("devname");
+    // SECURITY CONSIDERATION: The OTA password is stored in plain text in the configuration file.
+    // Anyone with filesystem access can read this password. See README for details.
     cfg.ota_password = server.arg("ota_password");
     // Parse optional reset_hold_seconds (numeric). Default to 10 if missing or invalid.
     String rhs = server.arg("reset_hold_seconds");
