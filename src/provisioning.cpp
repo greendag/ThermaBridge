@@ -6,6 +6,7 @@
 #include <DNSServer.h>
 #include <LittleFS.h>
 #include <Preferences.h>
+// Note: HTTP firmware upload endpoint removed (use ArduinoOTA instead)
 
 static WebServer server(80);
 static DNSServer dnsServer;
@@ -43,6 +44,20 @@ void handleSave()
     cfg.ssid = server.arg("ssid");
     cfg.psk = server.arg("psk");
     cfg.devname = server.arg("devname");
+    cfg.ota_password = server.arg("ota_password");
+    // Parse optional reset_hold_seconds (numeric). Default to 10 if missing or invalid.
+    String rhs = server.arg("reset_hold_seconds");
+    if (rhs.length() > 0)
+    {
+        int v = rhs.toInt();
+        if (v <= 0)
+            v = 10;
+        cfg.reset_hold_seconds = (uint16_t)v;
+    }
+    else
+    {
+        cfg.reset_hold_seconds = 10;
+    }
     if (cfg.ssid.length() == 0)
     {
         server.send(400, "text/plain", "SSID required");
@@ -139,9 +154,17 @@ void handleStatus()
             for (size_t i = 0; i < pskMasked.length(); ++i)
                 pskMasked.setCharAt(i, '*');
         }
+        // mask OTA password
+        String otaMasked = current.ota_password;
+        if (otaMasked.length() > 0)
+        {
+            for (size_t i = 0; i < otaMasked.length(); ++i)
+                otaMasked.setCharAt(i, '*');
+        }
         json += "\"ssid\":\"" + current.ssid + "\",";
         json += "\"psk_masked\":\"" + pskMasked + "\",";
         json += "\"devname\":\"" + current.devname + "\",";
+        json += "\"ota_password_masked\":\"" + otaMasked + "\",";
     }
     else
     {
@@ -253,9 +276,14 @@ void startStatusServer()
             if (pskMasked.length() > 0) {
                 for (size_t i = 0; i < pskMasked.length(); ++i) pskMasked.setCharAt(i, '*');
             }
+            String otaMasked = current.ota_password;
+            if (otaMasked.length() > 0) {
+                for (size_t i = 0; i < otaMasked.length(); ++i) otaMasked.setCharAt(i, '*');
+            }
             json += "\"ssid\":\"" + current.ssid + "\",";
             json += "\"psk_masked\":\"" + pskMasked + "\",";
             json += "\"devname\":\"" + current.devname + "\",";
+            json += "\"ota_password_masked\":\"" + otaMasked + "\",";
         } else {
             json += "\"ssid\":\"\",";
             json += "\"psk_masked\":\"\",";
@@ -300,7 +328,17 @@ void startStatusServer()
         Serial.println(statusServer.client().remoteIP().toString());
         statusServer.send(200, "application/json", json); });
     statusServer.begin();
+    // Mark the STA-mode status server as active so loopStatusServer() polls it
     statusServerActive = true;
+    // Log any unmatched requests on the STA server for diagnostics
+    statusServer.onNotFound([]()
+                            {
+        IPAddress remote = statusServer.client().remoteIP();
+        Serial.print("STA notFound request from: ");
+        Serial.println(remote.toString());
+        Serial.print("URI: ");
+        Serial.println(statusServer.uri());
+        statusServer.send(404, "text/plain", "Not found"); });
 }
 
 void loopStatusServer()

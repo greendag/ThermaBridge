@@ -8,6 +8,8 @@ struct Config
     String psk;
     String devname;
     uint16_t reset_hold_seconds; // seconds to hold BOOT button to factory reset
+    String ota_password;         // optional password for ArduinoOTA
+    bool mdns_enable;
 };
 
 bool loadConfig(Config &cfg);

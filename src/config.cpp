@@ -25,6 +25,8 @@ bool loadConfig(Config &cfg)
     cfg.psk = doc["psk"] | "";
     cfg.devname = doc["devname"] | "ThermaBridge";
     cfg.reset_hold_seconds = doc["reset_hold_seconds"] | 10;
+    cfg.ota_password = doc["ota_password"] | "";
+    cfg.mdns_enable = doc["mdns_enable"] | true;
     // Treat empty (or whitespace-only) SSID as "no config" so
     // the device will enter provisioning mode instead of
     // attempting to call WiFi.begin() with an invalid SSID.
@@ -58,6 +60,8 @@ bool saveConfig(const Config &cfg)
     doc["psk"] = cfg.psk;
     doc["devname"] = cfg.devname;
     doc["reset_hold_seconds"] = cfg.reset_hold_seconds;
+    doc["ota_password"] = cfg.ota_password;
+    doc["mdns_enable"] = cfg.mdns_enable;
     if (serializeJson(doc, f) == 0)
     {
         f.close();

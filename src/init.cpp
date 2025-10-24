@@ -2,6 +2,8 @@
 #include <Arduino.h>
 #include <LittleFS.h>
 #include <WiFi.h>
+#include <ESPmDNS.h>
+#include <ArduinoOTA.h>
 #include "led.h"
 #include "system.h"
 #include "config.h"
@@ -81,6 +83,26 @@ bool tryConnectWifi(unsigned long timeoutMs)
         Serial.print("Connected as STA, IP: ");
         Serial.println(WiFi.localIP());
         startStatusServer();
+        // Initialize ArduinoOTA
+        ArduinoOTA.setHostname(cfg.devname.c_str());
+        if (!cfg.ota_password.isEmpty())
+        {
+            ArduinoOTA.setPassword(cfg.ota_password.c_str());
+        }
+        ArduinoOTA.begin();
+        Serial.println("ArduinoOTA started");
+        if (cfg.mdns_enable)
+        {
+            if (MDNS.begin(cfg.devname.c_str()))
+            {
+                MDNS.addService("http", "tcp", 80);
+                Serial.println("mDNS started");
+            }
+            else
+            {
+                Serial.println("mDNS failed to start");
+            }
+        }
         return true;
     }
     else

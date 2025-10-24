@@ -2,6 +2,7 @@
 #include <WiFi.h>
 #include <LittleFS.h>
 #include <Preferences.h>
+#include <ArduinoOTA.h>
 #include "config.h"
 #include "provisioning.h"
 #include "globals.h"
@@ -44,6 +45,8 @@ void loop()
         return;
 
     loopStatusServer();
+
+    ArduinoOTA.handle();
 
     ledLoop();
 }

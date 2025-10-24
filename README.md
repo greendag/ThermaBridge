@@ -51,6 +51,11 @@ and tools to build/upload the project using PlatformIO.
 - The important field is `reset_hold_seconds` (how long to hold BOOT/GPIO0 to
 	trigger factory reset). Default is set in `data/config.json`.
 
+- New provisioning fields
+- `ota_password` (string, optional) — if set, protects ArduinoOTA. Leave empty to disable OTA password protection.
+- `reset_hold_seconds` (number) — how many seconds to hold the BOOT button to
+	trigger a factory reset. Valid range in the UI is 1–300 seconds. Default: 10s.
+
 ## Building and uploading
 From the project root, using PowerShell (Windows):
 
@@ -145,3 +150,41 @@ Contributions welcome. Please open issues for bugs and pull requests for fixes o
 
 ## License
 Add your preferred license here.
+
+## OTA (Over-the-air) updates
+
+This firmware supports two OTA update methods:
+
+- ArduinoOTA (recommended): discover the device by its mDNS/hostname (configured via `devname` in `config.json`) and upload directly from PlatformIO or the Arduino IDE.
+	- Example PlatformIO workflow (device must be on the same LAN and ArduinoOTA enabled):
+
+```powershell
+# Use the device hostname or mDNS name as upload port, e.g. "ThermaBridge.local"
+platformio run -t upload -e esp32-s3-devkitc-1 --upload-port ThermaBridge.local
+```
+
+## LittleFS sync (quick check)
+
+A small helper script verifies whether the contents of the repository `data/` folder
+match a recorded hash in `.littlefs_hash`. Use it to avoid forgetting to run the
+PlatformIO LittleFS upload after editing the UI or `data/config.json`.
+
+From PowerShell in the repo root:
+
+```powershell
+# print status
+python scripts/check_littlefs_sync.py
+
+# update the recorded hash to accept the current data/ state
+python scripts/check_littlefs_sync.py --update
+
+# when out-of-sync, upload LittleFS to the device
+python scripts/check_littlefs_sync.py --upload
+```
+
+If you use VS Code, there are two tasks (in `.vscode/tasks.json`):
+- "Check LittleFS sync" — runs the check script
+- "Upload LittleFS (uploadfs)" — runs `platformio run -t uploadfs`
+
+The check script computes a deterministic SHA256 of the files under `data/` and
+ignores timestamps so it only reports real content changes.
