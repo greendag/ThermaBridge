@@ -99,7 +99,28 @@ bool tryConnectWifi(unsigned long timeoutMs)
             Serial.println("Encoder initialized");
         }
         displayInit(cfg);
-        displaySplashScreen(cfg);
+        displaySplashScreen(cfg, true);
+        if (cfg.climate_enabled)
+        {
+            aht20 = new Adafruit_AHTX0();
+            bmp280 = new Adafruit_BMP280();
+            if (aht20->begin())
+            {
+                Serial.println("AHT20 initialized");
+            }
+            else
+            {
+                Serial.println("AHT20 failed to initialize");
+            }
+            if (bmp280->begin(0x77)) // BMP280 default address
+            {
+                Serial.println("BMP280 initialized");
+            }
+            else
+            {
+                Serial.println("BMP280 failed to initialize");
+            }
+        }
         if (cfg.mdns_enable)
         {
             if (MDNS.begin(cfg.devname.c_str()))

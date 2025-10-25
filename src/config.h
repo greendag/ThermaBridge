@@ -19,6 +19,7 @@ struct Config
     uint8_t encoder_clk_pin; // CLK pin for encoder
     uint8_t encoder_dt_pin;  // DT pin for encoder
     uint8_t encoder_sw_pin;  // SW pin for encoder
+    bool climate_enabled;    // enable climate sensors (AHT20 + BMP280)
 };
 
 bool loadConfig(Config &cfg);
