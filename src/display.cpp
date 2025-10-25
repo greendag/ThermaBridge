@@ -7,8 +7,8 @@
 
 Adafruit_SSD1306 display(128, 64, &Wire, OLED_RESET);
 
-const char *menuItems[] = {"Status", "Config", "Reboot"};
-const int MENU_ITEMS_COUNT = sizeof(menuItems) / sizeof(menuItems[0]);
+const char *menuItems[] = {"Status", "Config", "Climate", "Reboot"};
+const int MENU_ITEMS_COUNT = 4;
 const int MAX_VISIBLE_MENU_ITEMS = 6;
 
 int getOptimalTextSize(String text, int maxWidth)
@@ -43,7 +43,7 @@ void displayInit(const Config &cfg)
     Serial.println("SSD1306 initialized");
 }
 
-void displaySplashScreen(const Config &cfg)
+void displaySplashScreen(const Config &cfg, bool waitForInput)
 {
     display.clearDisplay();
 
@@ -68,9 +68,13 @@ void displaySplashScreen(const Config &cfg)
 
     display.display();
 
+    if (!waitForInput)
+        return;
+
     // Wait for encoder input
     if (encoder)
     {
+        encoder->update(); // Update before getting initial position
         int initialPos = encoder->getPosition();
         while (true)
         {
@@ -140,6 +144,56 @@ void displayConfig()
     display.display();
 }
 
+void displayClimate()
+{
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setCursor(0, 0);
+    if (aht20)
+    {
+        sensors_event_t humidity, temp;
+        aht20->getEvent(&humidity, &temp);
+        if (!isnan(temp.temperature))
+        {
+            display.printf("Temp: %.1f F\n", (temp.temperature * 9.0 / 5.0) + 32.0);
+        }
+        else
+        {
+            display.println("Temp: -- F");
+        }
+        if (!isnan(humidity.relative_humidity))
+        {
+            display.printf("Hum: %.1f %%\n", humidity.relative_humidity);
+        }
+        else
+        {
+            display.println("Hum: -- %");
+        }
+    }
+    if (bmp280)
+    {
+        float pres = bmp280->readPressure() / 100.0F;
+        if (!isnan(pres))
+        {
+            display.printf("Pres: %.1f hPa\n", pres);
+        }
+        else
+        {
+            display.println("Pres: -- hPa");
+        }
+        float alt = bmp280->readAltitude(1013.25F); // sea level pressure
+        if (!isnan(alt))
+        {
+            display.printf("Alt: %.1f ft\n", alt * 3.28084F);
+        }
+        else
+        {
+            display.println("Alt: -- ft");
+        }
+    }
+    display.display();
+}
+
 void displayMenu()
 {
     display.clearDisplay();
@@ -178,6 +232,9 @@ void handleMenuSelect()
         displayConfig();
         break;
     case 2:
+        displayClimate();
+        break;
+    case 3:
         ESP.restart();
         break;
     }
@@ -199,12 +256,32 @@ void displayLoop()
 
     encoder->update(); // Update encoder state
 
+    // Check for idle
+    if (millis() - lastEncoderActivity > 30000)
+    {
+        displaySplashScreen(cfg, false);
+        // Wait for encoder input to dismiss
+        encoder->update();
+        int initialPos = encoder->getPosition();
+        while (true)
+        {
+            encoder->update();
+            if (encoder->getPosition() != initialPos || encoder->isButtonPressed())
+            {
+                lastEncoderActivity = millis();
+                break;
+            }
+            delay(10);
+        }
+    }
+
     // With encoder, menu mode
     static int lastPos = 0;
     static bool initialized = false;
     if (!initialized)
     {
         lastPos = encoder->getPosition();
+        lastEncoderActivity = millis();
         initialized = true;
         displayMenu(); // Show initial menu
     }
@@ -216,11 +293,13 @@ void displayLoop()
         if (menuIndex < 0)
             menuIndex += MENU_ITEMS_COUNT;
         lastPos = pos;
+        lastEncoderActivity = millis();
         displayMenu();
     }
 
     if (encoder->isButtonPressed())
     {
+        lastEncoderActivity = millis();
         handleMenuSelect();
     }
 }

@@ -10,7 +10,10 @@
 extern Adafruit_SSD1306 display;
 
 void displayInit(const Config &cfg);
-void displaySplashScreen(const Config &cfg);
+void displaySplashScreen(const Config &cfg, bool waitForInput = true);
+void displayStatus(const Config &cfg);
+void displayConfig();
+void displayClimate();
 void displayMenu();
 void displayStatus(const Config &cfg);
 void displayLoop();
