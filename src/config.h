@@ -20,6 +20,8 @@ struct Config
     uint8_t encoder_dt_pin;  // DT pin for encoder
     uint8_t encoder_sw_pin;  // SW pin for encoder
     bool climate_enabled;    // enable climate sensors (AHT20 + BMP280)
+    bool ir_enabled;         // enable IR receiver (VS1838B)
+    uint8_t ir_pin;          // pin for IR receiver
 };
 
 bool loadConfig(Config &cfg);

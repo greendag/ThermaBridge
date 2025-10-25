@@ -8,3 +8,4 @@ int menuIndex = 0;
 Adafruit_AHTX0 *aht20 = nullptr;
 Adafruit_BMP280 *bmp280 = nullptr;
 unsigned long lastEncoderActivity = 0;
+IRrecv *irrecv = nullptr;

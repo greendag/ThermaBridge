@@ -37,6 +37,8 @@ bool loadConfig(Config &cfg)
     cfg.encoder_dt_pin = doc["encoder_dt_pin"] | 17;
     cfg.encoder_sw_pin = doc["encoder_sw_pin"] | 18;
     cfg.climate_enabled = doc["climate_enabled"] | true;
+    cfg.ir_enabled = doc["ir_enabled"] | true;
+    cfg.ir_pin = doc["ir_pin"] | 15;
     // Treat empty (or whitespace-only) SSID as "no config" so
     // the device will enter provisioning mode instead of
     // attempting to call WiFi.begin() with an invalid SSID.
@@ -82,6 +84,8 @@ bool saveConfig(const Config &cfg)
     doc["encoder_dt_pin"] = cfg.encoder_dt_pin;
     doc["encoder_sw_pin"] = cfg.encoder_sw_pin;
     doc["climate_enabled"] = cfg.climate_enabled;
+    doc["ir_enabled"] = cfg.ir_enabled;
+    doc["ir_pin"] = cfg.ir_pin;
     if (serializeJson(doc, f) == 0)
     {
         f.close();

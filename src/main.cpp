@@ -54,5 +54,7 @@ void loop()
     if (encoder)
         encoder->update();
 
+    handleIR();
+
     ledLoop();
 }

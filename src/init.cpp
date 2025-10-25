@@ -4,6 +4,7 @@
 #include <WiFi.h>
 #include <ESPmDNS.h>
 #include <ArduinoOTA.h>
+#include <IRremote.h>
 #include "led.h"
 #include "system.h"
 #include "config.h"
@@ -121,6 +122,12 @@ bool tryConnectWifi(unsigned long timeoutMs)
                 Serial.println("BMP280 failed to initialize");
             }
         }
+        if (cfg.ir_enabled)
+        {
+            irrecv = new IRrecv(cfg.ir_pin);
+            irrecv->enableIRIn();
+            Serial.println("IR receiver initialized");
+        }
         if (cfg.mdns_enable)
         {
             if (MDNS.begin(cfg.devname.c_str()))
@@ -140,5 +147,18 @@ bool tryConnectWifi(unsigned long timeoutMs)
         Serial.println("Failed to connect, starting provisioning AP...");
         startProvisioning();
         return false;
+    }
+}
+
+void handleIR()
+{
+    if (irrecv)
+    {
+        decode_results results;
+        if (irrecv->decode(&results))
+        {
+            Serial.printf("IR code: 0x%X\n", results.value);
+            irrecv->resume();
+        }
     }
 }

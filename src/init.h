@@ -10,3 +10,6 @@ bool initFileSystem();
 bool tryLoadConfig();
 // Attempt to connect to WiFi using cfg; returns true if connected.
 bool tryConnectWifi(unsigned long timeoutMs = 15000);
+
+// Handle IR decoding and printing
+void handleIR();
