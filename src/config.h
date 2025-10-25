@@ -10,6 +10,15 @@ struct Config
     uint16_t reset_hold_seconds; // seconds to hold BOOT button to factory reset
     String ota_password;         // optional password for ArduinoOTA
     bool mdns_enable;
+    bool display_enabled;    // enable OLED display
+    uint16_t display_width;  // display width in pixels
+    uint16_t display_height; // display height in pixels
+    uint8_t display_sda_pin; // I2C SDA pin for display
+    uint8_t display_scl_pin; // I2C SCL pin for display
+    bool encoder_enabled;    // enable KY-040 rotary encoder
+    uint8_t encoder_clk_pin; // CLK pin for encoder
+    uint8_t encoder_dt_pin;  // DT pin for encoder
+    uint8_t encoder_sw_pin;  // SW pin for encoder
 };
 
 bool loadConfig(Config &cfg);
