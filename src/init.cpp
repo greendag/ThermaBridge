@@ -9,6 +9,7 @@
 #include "config.h"
 #include "globals.h"
 #include "provisioning.h"
+#include "display.h"
 
 bool initSerial()
 {
@@ -91,6 +92,14 @@ bool tryConnectWifi(unsigned long timeoutMs)
         }
         ArduinoOTA.begin();
         Serial.println("ArduinoOTA started");
+        if (cfg.encoder_enabled)
+        {
+            encoder = new RotaryEncoder(cfg.encoder_clk_pin, cfg.encoder_dt_pin, cfg.encoder_sw_pin);
+            encoder->begin();
+            Serial.println("Encoder initialized");
+        }
+        displayInit(cfg);
+        displaySplashScreen(cfg);
         if (cfg.mdns_enable)
         {
             if (MDNS.begin(cfg.devname.c_str()))

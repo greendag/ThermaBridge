@@ -9,6 +9,7 @@
 #include "led.h"
 #include "system.h"
 #include "init.h"
+#include "display.h"
 
 // State objects
 // State objects are declared in `globals.h` and defined in `globals.cpp`
@@ -47,6 +48,11 @@ void loop()
     loopStatusServer();
 
     ArduinoOTA.handle();
+
+    displayLoop();
+
+    if (encoder)
+        encoder->update();
 
     ledLoop();
 }
