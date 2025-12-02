@@ -58,7 +58,7 @@ void ledSetProvisioningColor()
 {
     if (neopixelAvailable && neoPixel)
     {
-        neoPixel->setPixelColor(0, neoPixel->Color(scale(255), scale(191), scale(0)));
+        neoPixel->setPixelColor(0, neoPixel->Color(scale(255), scale(255), scale(0)));
         neoPixel->show();
     }
     else if (pwmAttached)
@@ -95,7 +95,7 @@ void ledFactoryResetVisual()
         // amber flashes then solid green
         for (int i = 0; i < 2; ++i)
         {
-            neoPixel->setPixelColor(0, neoPixel->Color(scale(255), scale(191), scale(0)));
+            neoPixel->setPixelColor(0, neoPixel->Color(scale(255), scale(180), scale(0)));
             neoPixel->show();
             delay(300);
             neoPixel->setPixelColor(0, 0);

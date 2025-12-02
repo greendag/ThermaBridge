@@ -38,10 +38,12 @@ void handleSave()
         server.send(405, "text/plain", "Method Not Allowed");
         return;
     }
+
     Config cfg;
     cfg.ssid = server.arg("ssid");
     cfg.psk = server.arg("psk");
     cfg.devname = server.arg("devname");
+
     if (cfg.ssid.length() == 0)
     {
         server.send(400, "text/plain", "SSID required");
@@ -66,6 +68,7 @@ void handleSave()
 
     unsigned long start = millis();
     const unsigned long CONNECT_TIMEOUT = 15000; // 15s
+
     while (millis() - start < CONNECT_TIMEOUT)
     {
         if (WiFi.status() == WL_CONNECTED)
@@ -311,6 +314,11 @@ void startProvisioning()
     WiFi.mode(WIFI_AP);
     WiFi.softAP(apSSID.c_str());
     IPAddress apIP = WiFi.softAPIP();
+
+    Serial.print("AP IP address: ");
+    Serial.println(apIP);
+    Serial.print("Provisioning URL: http://");
+    Serial.println(apIP);
 
     dnsServer.start(DNS_PORT, "*", apIP);
 
